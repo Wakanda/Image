@@ -100,7 +100,6 @@ WAF.define('Image', ['waf-core/widget'], function(widget) {
                         window.location = this.url();
                     }
                 }
-                event.stopPropagation();
             }.bind(this);
             $(this.node).on('click', this._handleClick);
         }
