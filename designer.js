@@ -79,10 +79,14 @@
         'border': true,
         'sizePosition': true,
         'label': true,
-        'disabled': ['border-radius', 'background-image', 'background-repeat']
+        'disabled': ['background-image', 'background-repeat']
     });
 
     Image.doAfter('init', function() {
+        //Backward compatibility
+        //TOFIX: Add a parameter in package.json to define the main widget property
+        this.value = this.image;
+
         showUrl.call(this);
         this.url.onChange(showUrl);
         this.subscribe('datasourceBindingChange', 'image', callRender, this);
