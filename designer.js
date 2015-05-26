@@ -1,5 +1,6 @@
 (function(Image) {
     "use strict";
+    /* globals Designer */
     Image.setWidth(120);
     Image.setHeight(110);
 
@@ -65,10 +66,6 @@
         }
     };
 
-    var callRender = function() {
-        this.render();
-    }
-
     Image.setPanelStyle({
         'fClass': true, //This property is for the design panel
         'text': false,
@@ -89,13 +86,25 @@
 
         showUrl.call(this);
         this.url.onChange(showUrl);
-        this.subscribe('datasourceBindingChange', 'image', callRender, this);
+        this.subscribe('datasourceBindingChange', 'image', this.render, this);
         this.subscribe('datasourceBindingChange', 'url', showUrl, this);
-        
+
         // disable click events in studio
         $(this.node).off('click', this._handleClick);
     });
 
     Image.customizeProperty('url', {title: 'URL'});
     Image.customizeProperty('urlTarget', {title: 'Target'});
+
+    Image.prototype._extractImageURL = function() {
+        var style = this.node.style.backgroundImage;
+        style = Designer.util.unfixStyleURL(style);
+        var r = /url *\( *['"]?(.*)['"]? *\)/.exec(style);
+        return r && r[1] || null;
+    };
+
+    Image.prototype._changeImage = function(url){
+        this.node.style.backgroundImage = Designer.util.fixStyleURL(url ? 'url("'+url+'")' : '');
+    };
+
 });

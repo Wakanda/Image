@@ -1,14 +1,15 @@
 WAF.define('Image', ['waf-core/widget'], function(widget) {
     "use strict";
 
-    var placeholderImage = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDIwNDggMjA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNzA0IDcwNHEwIDgwLTU2IDEzNnQtMTM2IDU2LTEzNi01Ni01Ni0xMzYgNTYtMTM2IDEzNi01NiAxMzYgNTYgNTYgMTM2em0xMDI0IDM4NHY0NDhoLTE0MDh2LTE5MmwzMjAtMzIwIDE2MCAxNjAgNTEyLTUxMnptOTYtNzA0aC0xNjAwcS0xMyAwLTIyLjUgOS41dC05LjUgMjIuNXYxMjE2cTAgMTMgOS41IDIyLjV0MjIuNSA5LjVoMTYwMHExMyAwIDIyLjUtOS41dDkuNS0yMi41di0xMjE2cTAtMTMtOS41LTIyLjV0LTIyLjUtOS41em0xNjAgMzJ2MTIxNnEwIDY2LTQ3IDExM3QtMTEzIDQ3aC0xNjAwcS02NiAwLTExMy00N3QtNDctMTEzdi0xMjE2cTAtNjYgNDctMTEzdDExMy00N2gxNjAwcTY2IDAgMTEzIDQ3dDQ3IDExM3oiLz48L3N2Zz4=";
-
     var Image = widget.create('Image', {
         image: widget.property({
             type: 'file',
             description: 'Image to display',
             accept: "image/*",
-            folder: "images"
+            folder: "images",
+            defaultValueCallback: function() {
+                return this._extractImageURL();
+            }
         }),
         url: widget.property({
             type: 'string',
@@ -30,6 +31,10 @@ WAF.define('Image', ['waf-core/widget'], function(widget) {
                 'cover':             'Cover'
             },
             defaultValue: 'contain',
+            defaultValueCallback: function() {
+                var r = /(^| )scale-(auto|contain|cover)( |$)/.exec(this.node.className);
+                return r && r[2] || 'contain';
+            },
             bindable: false
         }),
         align: widget.property({
@@ -47,40 +52,53 @@ WAF.define('Image', ['waf-core/widget'], function(widget) {
                 'bottom right':      'Bottom-right'
             },
             defaultValue: 'top left',
+            defaultValueCallback: function() {
+                var r = /(^| )align-(top|center|bottom)-(left|center|right)( |$)/.exec(this.node.className);
+                return r && (r[2] + ' ' + r[3]) || 'top left';
+            },
             bindable: false
         }),
-        imageIsMissing: function(){
-            if(this.image() == null){
-                return true;
-            }
-            return false;
+        _extractImageURL: function() {
+            var r = /url *\( *['"]?(.*)['"]? *\)/.exec(this.node.style.backgroundImage);
+            return r && r[1] || null;
         },
-        changeImage: function(url){
-            this.style({
-                'background-image' : 'url("'+url+'")'
-            });
+        _changeImage: function(url){
+            this.node.style.backgroundImage = url ? 'url("'+url+'")' : '';
         },
-        render: function() {
-            if(!this.imageIsMissing()){
-                this.changeImage(this.image());
-            }else{
-                this.changeImage(placeholderImage);
-            }
-            this.style({
-                'background-size' : this.scale(),
-                'background-position' : this.align()
+        _changeScale: function(value) {
+            var $node = $(this.node);
+            [
+                'scale-auto',        'scale-contain',       'scale-cover',
+            ].forEach(function(klass) {
+                $node.removeClass(klass);
             });
+            if (value) {
+                $node.addClass('scale-' + value);
+            }
+        },
+        _changeAlign: function(value) {
+            var $node = $(this.node);
+            [
+                'align-top-left',    'align-top-center',    'align-top-right',
+                'align-center-left', 'align-center-center', 'align-center-right',
+                'align-bottom-left', 'align-bottom-center', 'align-bottom-right'
+            ].forEach(function(klass) {
+                $node.removeClass(klass);
+            });
+            if (value) {
+                $node.addClass('align-' + value.replace(' ', '-'));
+            }
         },
         init: function() {
             this.addClass('waf-img');
-            this.render();
-            this.image.onChange(function(){
-                this.render(); 
-            });
-            this.scale.onChange(function(){ this.render(); });
-            this.align.onChange(function(){ this.render(); });
+            this._changeImage(this.image());
+            this._changeScale(this.scale());
+            this._changeAlign(this.align());
+            this.image.onChange(this._changeImage);
+            this.scale.onChange(this._changeScale);
+            this.align.onChange(this._changeAlign);
             this.url.onChange(function(){
-                if(this.url() && (typeof this.style('cursor') == 'undefined' || this.style('cursor') == '')){
+                if(this.url() && !this.style('cursor')){
                     this.style({
                         'cursor' : 'pointer'
                     });
@@ -90,7 +108,7 @@ WAF.define('Image', ['waf-core/widget'], function(widget) {
                     });
                 }
             });
-            
+
             this._handleClick = function(event) {
                 this.fire('action');
                 if(this.url()) {
