@@ -3,7 +3,6 @@ WAF.define('Image', ['waf-core/widget'], function(widget) {
 
     var Image = widget.create('Image', {
         image: widget.property({
-            type: 'file',
             description: 'Image to display',
             accept: "image/*",
             folder: "images",
@@ -63,7 +62,12 @@ WAF.define('Image', ['waf-core/widget'], function(widget) {
             return r && r[1] || null;
         },
         _changeImage: function(url){
-            this.node.style.backgroundImage = url ? 'url("'+url+'")' : '';
+            var imageUrl = url;
+            var boundDatasource = this.image.boundDatasource();
+            if (this._boundDatasourceImage && this._boundDatasourceImage.__deferred) {
+                imageUrl = this._boundDatasourceImage.__deferred.uri;
+            }
+            this.node.style.backgroundImage = imageUrl ? 'url("'+imageUrl+'")' : '';   
         },
         _changeScale: function(value) {
             var $node = $(this.node);
@@ -94,7 +98,13 @@ WAF.define('Image', ['waf-core/widget'], function(widget) {
             this._changeImage(this.image());
             this._changeScale(this.scale());
             this._changeAlign(this.align());
-            this.image.onChange(this._changeImage);
+            this.image.onChange(function() {                
+                var boundDatasource = this.image.boundDatasource();
+                if (boundDatasource && boundDatasource.datasource._private.sourceType === 'dataClass') {
+                    this._boundDatasourceImage = boundDatasource.datasource.getAttributeValue(boundDatasource.attribute);
+                }
+                this._changeImage();
+            });
             this.scale.onChange(this._changeScale);
             this.align.onChange(this._changeAlign);
             this.url.onChange(function(){
